@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - SamruddhiAttendX</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f4ff;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 450px;
+            margin: 30px auto;
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #243b80;
+        }
+
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 15px;
+            box-sizing: border-box;
+            border-radius: 8px;
+        }
+
+        input {
+            border: 1px solid #ccc;
+        }
+
+        button {
+            background: #2949a5;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .qr-image {
+            width: 220px;
+            max-width: 100%;
+            margin-top: 20px;
+        }
+
+        .logout {
+            display: inline-block;
+            margin-top: 20px;
+            color: #2949a5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Teacher Dashboard</h1>
+        <p>Welcome to SamruddhiAttendX!</p>
+
+        <h3>Generate Attendance QR Code</h3>
+
+        <form method="POST" action="/teacher/dashboard">
+            <input
+                type="text"
+                name="subject"
+                placeholder="Enter subject name"
+                required
+            >
+
+            <button type="submit">Generate QR Code</button>
+        </form>
+
+        {% if qr_image %}
+            <h3>QR Code Generated!</h3>
+            <p>Subject: {{ subject }}</p>
+
+            <img
+                class="qr-image"
+                src="data:image/png;base64,{{ qr_image }}"
+                alt="Attendance QR Code"
+            >
+
+            <p>⏳ This QR code expires in 5 minutes.</p>
+            <p>Students can scan it to check whether it is valid.</p>
+        {% endif %}
+
+        <a class="logout" href="/teacher/logout">Logout</a>
+    </div>
+</body>
+</html>
