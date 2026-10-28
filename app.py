@@ -11,10 +11,14 @@ app.secret_key = "demo-key-change-before-production"
 # Store the active QR session for this demo
 active_qr = {}
 
+
+# ---------------- HOME PAGE ----------------
 @app.route("/")
 def home():
     return render_template("index.html")
 
+
+# ---------------- TEACHER LOGIN ----------------
 @app.route("/teacher", methods=["GET", "POST"])
 def teacher():
     error = ""
@@ -31,6 +35,8 @@ def teacher():
 
     return render_template("teacher.html", error=error)
 
+
+# ---------------- TEACHER DASHBOARD ----------------
 @app.route("/teacher/dashboard", methods=["GET", "POST"])
 def teacher_dashboard():
     if not session.get("teacher_logged_in"):
@@ -44,6 +50,7 @@ def teacher_dashboard():
 
         if subject:
             token = secrets.token_urlsafe(16)
+
             active_qr.clear()
             active_qr.update({
                 "token": token,
@@ -51,16 +58,18 @@ def teacher_dashboard():
                 "expires": datetime.utcnow() + timedelta(minutes=5)
             })
 
-            qr_data = url_for(
-                "student",
-                token=token,
-                _external=True
-            )
+            # QR code opens the student page
+            qr_data = url_for("student", token=token, _external=True)
 
+            # Generate QR image
             qr = qrcode.make(qr_data)
+
             buffer = io.BytesIO()
             qr.save(buffer, format="PNG")
-            qr_image = base64.b64encode(buffer.getvalue()).decode("utf-8")
+
+            qr_image = base64.b64encode(
+                buffer.getvalue()
+            ).decode("utf-8")
 
     return render_template(
         "dashboard.html",
@@ -68,26 +77,42 @@ def teacher_dashboard():
         subject=subject
     )
 
+
+# ---------------- TEACHER LOGOUT ----------------
 @app.route("/teacher/logout")
 def teacher_logout():
     session.pop("teacher_logged_in", None)
     return redirect(url_for("teacher"))
 
+
+# ---------------- STUDENT PAGE ----------------
 @app.route("/student")
 def student():
     token = request.args.get("token", "")
     message = ""
 
     if token:
+        current_qr = active_qr
+
         if (
-            token == active_qr.get("token")
-            and datetime.utcnow() < active_qr.get("expires", datetime.min)
+            token == current_qr.get("token")
+            and datetime.utcnow() < current_qr.get(
+                "expires", datetime.min
+            )
         ):
-            message = "Valid QR code for " + active_qr["subject"]
+            message = (
+                "Valid QR code for subject: "
+                + current_qr["subject"]
+            )
         else:
             message = "This QR code is invalid or has expired."
 
-    return render_template("student.html", message=message)
+    return render_template(
+        "student.html",
+        message=message
+    )
 
+
+# ---------------- RUN APPLICATION ----------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
