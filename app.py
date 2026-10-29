@@ -23,6 +23,15 @@ def get_db():
 def init_db():
     with get_db() as conn:
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS students (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id TEXT UNIQUE,
+                student_name TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS attendance (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 student_id TEXT NOT NULL,
@@ -41,6 +50,49 @@ init_db()
 @app.route("/")
 def home():
     return render_template("index.html")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    message = ""
+    assigned_id = ""
+
+    if request.method == "POST":
+        name = request.form.get("student_name", "").strip()
+
+        if not name:
+            message = "Please enter your full name."
+        else:
+            try:
+                with get_db() as conn:
+                    cursor = conn.execute("""
+                        INSERT INTO students
+                        (student_name, created_at)
+                        VALUES (?, ?)
+                    """, (
+                        name,
+                        datetime.now(timezone.utc).isoformat()
+                    ))
+
+                    number = cursor.lastrowid
+                    assigned_id = f"STU{number:04d}"
+
+                    conn.execute("""
+                        UPDATE students
+                        SET student_id = ?
+                        WHERE id = ?
+                    """, (assigned_id, number))
+
+                message = "Registration successful! Save your Student ID."
+
+            except sqlite3.IntegrityError:
+                message = "Registration could not be completed. Please try again."
+
+    return render_template(
+        "register.html",
+        message=message,
+        assigned_id=assigned_id
+    )
 
 
 @app.route("/teacher", methods=["GET", "POST"])
@@ -118,16 +170,13 @@ def teacher_logout():
 @app.route("/student", methods=["GET", "POST"])
 def student():
     token = request.args.get("token", "")
-
     message = ""
-    valid = False
 
     def check_token(value):
         return (
             bool(value)
             and value == active_qr.get("token")
-            and datetime.now(timezone.utc)
-            < active_qr.get(
+            and datetime.now(timezone.utc) < active_qr.get(
                 "expires",
                 datetime.min.replace(tzinfo=timezone.utc)
             )
@@ -137,34 +186,44 @@ def student():
 
     if request.method == "POST":
         token = request.form.get("token", "")
-        student_id = request.form.get("student_id", "").strip()
-        student_name = request.form.get("student_name", "").strip()
-
+        student_id = request.form.get("student_id", "").strip().upper()
         valid = check_token(token)
 
         if not valid:
             message = "QR code is invalid or expired. Scan the latest QR code."
-        elif not student_id or not student_name:
-            message = "Please enter your name and student ID."
+
+        elif not student_id:
+            message = "Please enter your Student ID."
+
         else:
-            try:
-                with get_db() as conn:
-                    conn.execute("""
-                        INSERT INTO attendance
-                        (student_id, student_name, subject, token, recorded_at)
-                        VALUES (?, ?, ?, ?, ?)
-                    """, (
-                        student_id,
-                        student_name,
-                        active_qr["subject"],
-                        token,
-                        datetime.now(timezone.utc).isoformat()
-                    ))
+            with get_db() as conn:
+                student_record = conn.execute("""
+                    SELECT student_id, student_name
+                    FROM students
+                    WHERE student_id = ?
+                """, (student_id,)).fetchone()
 
-                message = "Attendance recorded successfully!"
+                if not student_record:
+                    message = "Student ID not registered. Register first."
 
-            except sqlite3.IntegrityError:
-                message = "Attendance is already recorded for this QR session."
+                else:
+                    try:
+                        conn.execute("""
+                            INSERT INTO attendance
+                            (student_id, student_name, subject, token, recorded_at)
+                            VALUES (?, ?, ?, ?, ?)
+                        """, (
+                            student_record["student_id"],
+                            student_record["student_name"],
+                            active_qr["subject"],
+                            token,
+                            datetime.now(timezone.utc).isoformat()
+                        ))
+
+                        message = "Attendance recorded successfully!"
+
+                    except sqlite3.IntegrityError:
+                        message = "Attendance already recorded for this session."
 
         valid = check_token(token)
 
