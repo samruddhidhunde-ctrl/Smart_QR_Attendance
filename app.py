@@ -9,15 +9,20 @@ import io
 import base64
 import csv
 import secrets
+import math
+import os
 from datetime import datetime, timedelta, timezone
 
 app = Flask(__name__)
-app.secret_key = "demo-key-change-before-production"
+app.secret_key = os.environ.get(
+    "SECRET_KEY", "demo-key-change-before-production"
+)
 
 DATABASE = "attendance.db"
 QR_EXPIRY_MINUTES = 5
+ALLOWED_RADIUS_METRES = 50
 
-# Active QR codes are stored temporarily in memory.
+# Demo storage: active QR details disappear when the server restarts.
 active_qr = {}
 
 
@@ -60,14 +65,48 @@ def init_db():
 init_db()
 
 
-# ---------------- HOME PAGE ----------------
+# ---------------- LOCATION DISTANCE ----------------
+
+def distance_metres(lat1, lon1, lat2, lon2):
+    """Calculate approximate distance between two GPS coordinates."""
+    earth_radius = 6371000
+
+    lat1 = math.radians(lat1)
+    lat2 = math.radians(lat2)
+    delta_lat = math.radians(lat2 - lat1)
+    delta_lon = math.radians(lon2 - lon1)
+
+    a = (
+        math.sin(delta_lat / 2) ** 2
+        + math.cos(lat1)
+        * math.cos(lat2)
+        * math.sin(delta_lon / 2) ** 2
+    )
+
+    return earth_radius * 2 * math.atan2(
+        math.sqrt(a), math.sqrt(1 - a)
+    )
+
+
+def valid_coordinate(value, minimum, maximum):
+    try:
+        number = float(value)
+        return (
+            math.isfinite(number)
+            and minimum <= number <= maximum
+        )
+    except (TypeError, ValueError):
+        return False
+
+
+# ---------------- HOME ----------------
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
 
-# ---------------- STUDENT REGISTRATION ----------------
+# ---------------- REGISTRATION ----------------
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
@@ -86,8 +125,7 @@ def register():
 
             cursor = conn.execute(
                 """
-                INSERT INTO students
-                (student_name, created_at)
+                INSERT INTO students (student_name, created_at)
                 VALUES (?, ?)
                 """,
                 (
@@ -96,16 +134,12 @@ def register():
                 )
             )
 
-            student_number = cursor.lastrowid
-            student_id = f"STU{student_number:04d}"
+            number = cursor.lastrowid
+            student_id = f"STU{number:04d}"
 
             conn.execute(
-                """
-                UPDATE students
-                SET student_id = ?
-                WHERE id = ?
-                """,
-                (student_id, student_number)
+                "UPDATE students SET student_id = ? WHERE id = ?",
+                (student_id, number)
             )
 
             conn.commit()
@@ -151,10 +185,22 @@ def dashboard():
 
     if request.method == "POST":
         subject = request.form.get("subject", "").strip()
+        latitude = request.form.get("teacher_latitude", "")
+        longitude = request.form.get("teacher_longitude", "")
 
         if not subject:
             error = "Please enter a subject name."
+
+        elif not valid_coordinate(latitude, -90, 90):
+            error = "Please set the teacher's location first."
+
+        elif not valid_coordinate(longitude, -180, 180):
+            error = "Please set the teacher's location first."
+
         else:
+            latitude = float(latitude)
+            longitude = float(longitude)
+
             token = secrets.token_urlsafe(24)
             expires_at = (
                 datetime.now(timezone.utc)
@@ -163,7 +209,9 @@ def dashboard():
 
             active_qr[token] = {
                 "subject": subject,
-                "expires_at": expires_at
+                "expires_at": expires_at,
+                "latitude": latitude,
+                "longitude": longitude
             }
 
             student_url = (
@@ -179,29 +227,26 @@ def dashboard():
             qr.add_data(student_url)
             qr.make(fit=True)
 
-            qr_image_object = qr.make_image(
+            image_object = qr.make_image(
                 fill_color="black",
                 back_color="white"
             )
 
-            image_buffer = io.BytesIO()
-            qr_image_object.save(image_buffer, format="PNG")
-
+            buffer = io.BytesIO()
+            image_object.save(buffer, format="PNG")
             qr_image = base64.b64encode(
-                image_buffer.getvalue()
+                buffer.getvalue()
             ).decode("utf-8")
 
             qr_subject = subject
             qr_expires_at = expires_at.strftime("%H:%M:%S UTC")
 
     conn = get_db()
-
     records = conn.execute("""
         SELECT student_id, student_name, subject, recorded_at
         FROM attendance
         ORDER BY id DESC
     """).fetchall()
-
     conn.close()
 
     return render_template(
@@ -219,8 +264,8 @@ def dashboard():
 @app.route("/student", methods=["GET", "POST"])
 def student():
     token = request.args.get("token") or request.form.get("token")
-    valid = False
     message = None
+    valid = False
 
     qr_info = active_qr.get(token) if token else None
 
@@ -229,59 +274,90 @@ def student():
             valid = True
         else:
             active_qr.pop(token, None)
-            message = "This QR code has expired. Please ask your teacher for a new one."
+            message = "QR code expired. Ask your teacher for a new one."
     else:
-        message = "Invalid or expired QR code. Please scan a new QR code."
+        message = "Invalid or expired QR code. Scan a new code."
 
     if request.method == "POST" and valid:
-        student_id = request.form.get("student_id", "").strip().upper()
+        student_id = request.form.get(
+            "student_id", ""
+        ).strip().upper()
+
+        latitude = request.form.get("latitude", "")
+        longitude = request.form.get("longitude", "")
 
         if not student_id:
-            message = "Please enter your Student ID."
+            message = "Please enter your registered Student ID."
+
+        elif not valid_coordinate(latitude, -90, 90):
+            message = "Your location is required. Allow location access and try again."
+
+        elif not valid_coordinate(longitude, -180, 180):
+            message = "Your location is required. Allow location access and try again."
+
         else:
-            conn = get_db()
+            latitude = float(latitude)
+            longitude = float(longitude)
 
-            student_record = conn.execute(
-                """
-                SELECT student_id, student_name
-                FROM students
-                WHERE student_id = ?
-                """,
-                (student_id,)
-            ).fetchone()
+            distance = distance_metres(
+                qr_info["latitude"],
+                qr_info["longitude"],
+                latitude,
+                longitude
+            )
 
-            if not student_record:
-                message = "Student ID not found. Please register first."
+            if distance > ALLOWED_RADIUS_METRES:
+                message = (
+                    "Attendance not marked. You are approximately "
+                    f"{distance:.0f} metres from the teacher's "
+                    "selected location. You must be within 50 metres."
+                )
             else:
-                try:
-                    conn.execute(
-                        """
-                        INSERT INTO attendance
-                        (student_id, student_name, subject, token, recorded_at)
-                        VALUES (?, ?, ?, ?, ?)
-                        """,
-                        (
-                            student_record["student_id"],
-                            student_record["student_name"],
-                            qr_info["subject"],
-                            token,
-                            datetime.now(timezone.utc).strftime(
-                                "%Y-%m-%d %H:%M:%S UTC"
+                conn = get_db()
+
+                student_record = conn.execute(
+                    """
+                    SELECT student_id, student_name
+                    FROM students
+                    WHERE student_id = ?
+                    """,
+                    (student_id,)
+                ).fetchone()
+
+                if not student_record:
+                    message = "Student ID not found. Please register first."
+                else:
+                    try:
+                        conn.execute(
+                            """
+                            INSERT INTO attendance
+                            (student_id, student_name, subject,
+                             token, recorded_at)
+                            VALUES (?, ?, ?, ?, ?)
+                            """,
+                            (
+                                student_record["student_id"],
+                                student_record["student_name"],
+                                qr_info["subject"],
+                                token,
+                                datetime.now(timezone.utc).strftime(
+                                    "%Y-%m-%d %H:%M:%S UTC"
+                                )
                             )
                         )
-                    )
+                        conn.commit()
+                        message = (
+                            "Attendance marked successfully for "
+                            + student_record["student_name"] + "!"
+                        )
 
-                    conn.commit()
-                    message = (
-                        "Attendance marked successfully for "
-                        + student_record["student_name"]
-                        + "!"
-                    )
+                    except sqlite3.IntegrityError:
+                        message = (
+                            "Your attendance has already been "
+                            "marked for this QR code."
+                        )
 
-                except sqlite3.IntegrityError:
-                    message = "Your attendance has already been marked for this QR code."
-
-            conn.close()
+                conn.close()
 
     return render_template(
         "student.html",
@@ -292,7 +368,7 @@ def student():
     )
 
 
-# ---------------- DOWNLOAD ATTENDANCE CSV ----------------
+# ---------------- CSV DOWNLOAD ----------------
 
 @app.route("/teacher/download")
 def download_attendance():
@@ -303,20 +379,16 @@ def download_attendance():
     writer = csv.writer(output)
 
     writer.writerow([
-        "Student ID",
-        "Student Name",
-        "Subject",
-        "Attendance Time"
+        "Student ID", "Student Name",
+        "Subject", "Attendance Time"
     ])
 
     conn = get_db()
-
     records = conn.execute("""
         SELECT student_id, student_name, subject, recorded_at
         FROM attendance
         ORDER BY id DESC
     """).fetchall()
-
     conn.close()
 
     for record in records:
@@ -327,10 +399,8 @@ def download_attendance():
             record["recorded_at"]
         ])
 
-    csv_content = "\ufeff" + output.getvalue()
-
     return Response(
-        csv_content,
+        "\ufeff" + output.getvalue(),
         mimetype="text/csv",
         headers={
             "Content-Disposition":
@@ -339,7 +409,7 @@ def download_attendance():
     )
 
 
-# ---------------- TEACHER LOGOUT ----------------
+# ---------------- LOGOUT ----------------
 
 @app.route("/teacher/logout")
 def logout():
