@@ -1,98 +1,164 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Dashboard - SamruddhiAttendX</title>
-
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #f0f4ff;
-            text-align: center;
+            background: #f2f6fc;
+            margin: 0;
             padding: 20px;
+            color: #222;
         }
 
         .container {
-            max-width: 450px;
+            max-width: 1000px;
             margin: 30px auto;
             background: white;
             padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 16px;
+            box-shadow: 0 5px 20px #00000012;
         }
 
-        h1 {
-            color: #243b80;
-        }
-
-        input, button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 15px;
-            box-sizing: border-box;
-            border-radius: 8px;
+        h1, h2 {
+            text-align: center;
+            color: #1677d2;
         }
 
         input {
+            width: 100%;
+            padding: 13px;
+            margin: 10px 0;
             border: 1px solid #ccc;
-        }
-
-        button {
-            background: #2949a5;
-            color: white;
-            border: none;
-            cursor: pointer;
+            border-radius: 8px;
+            box-sizing: border-box;
             font-size: 16px;
         }
 
+        button {
+            padding: 13px 20px;
+            background: #168cf0;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .center {
+            text-align: center;
+        }
+
         .qr-image {
+            display: block;
             width: 220px;
             max-width: 100%;
+            margin: 20px auto;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
             margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        th {
+            background: #168cf0;
+            color: white;
+        }
+
+        tr:nth-child(even) {
+            background: #f5f8fc;
         }
 
         .logout {
-            display: inline-block;
-            margin-top: 20px;
-            color: #2949a5;
+            display: block;
+            text-align: center;
+            margin-top: 25px;
+            color: #1677d2;
         }
     </style>
 </head>
-
 <body>
-    <div class="container">
-        <h1>Teacher Dashboard</h1>
-        <p>Welcome to SamruddhiAttendX!</p>
+<div class="container">
+    <h1>Teacher Dashboard</h1>
+    <p class="center"><strong>SamruddhiAttendX</strong></p>
 
-        <h3>Generate Attendance QR Code</h3>
+    <h2>Generate Attendance QR Code</h2>
 
-        <form method="POST" action="/teacher/dashboard">
-            <input
-                type="text"
-                name="subject"
-                placeholder="Enter subject name"
-                required
-            >
-
+    <form method="POST" action="{{ url_for('teacher_dashboard') }}">
+        <input
+            type="text"
+            name="subject"
+            placeholder="Enter subject name"
+            required
+        >
+        <div class="center">
             <button type="submit">Generate QR Code</button>
-        </form>
+        </div>
+    </form>
 
-        {% if qr_image %}
-            <h3>QR Code Generated!</h3>
-            <p>Subject: {{ subject }}</p>
+    {% if qr_image %}
+        <h2>QR Code Generated!</h2>
+        <p class="center">Subject: <strong>{{ subject }}</strong></p>
+        <img
+            class="qr-image"
+            src="data:image/png;base64,{{ qr_image }}"
+            alt="Attendance QR Code"
+        >
+        <p class="center">This QR code expires in 5 minutes.</p>
+    {% endif %}
 
-            <img
-                class="qr-image"
-                src="data:image/png;base64,{{ qr_image }}"
-                alt="Attendance QR Code"
-            >
+    <hr>
 
-            <p>⏳ This QR code expires in 5 minutes.</p>
-            <p>Students can scan it to check whether it is valid.</p>
-        {% endif %}
-
-        <a class="logout" href="/teacher/logout">Logout</a>
+    <h2>Student Attendance Sheet</h2>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Student Name</th>
+                    <th>Subject</th>
+                    <th>Attendance Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if records %}
+                    {% for record in records %}
+                        <tr>
+                            <td>{{ record['student_id'] }}</td>
+                            <td>{{ record['student_name'] }}</td>
+                            <td>{{ record['subject'] }}</td>
+                            <td>{{ record['recorded_at'] }}</td>
+                        </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" class="center">
+                            No attendance records yet.
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
     </div>
+
+    <a class="logout" href="{{ url_for('teacher_logout') }}">
+        Logout
+    </a>
+</div>
 </body>
 </html>
