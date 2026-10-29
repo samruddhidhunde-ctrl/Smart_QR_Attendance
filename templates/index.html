@@ -1,53 +1,68 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SamruddhiAttendX</title>
-
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
-            background: #f4f7fb;
-            padding: 60px 15px;
+            background: #f0f5fc;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
         }
 
-        .box {
+        .card {
             background: white;
+            width: 100%;
             max-width: 500px;
-            margin: auto;
-            padding: 35px 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 35px;
+            border-radius: 18px;
+            text-align: center;
+            box-shadow: 0 8px 25px #00000015;
+            box-sizing: border-box;
         }
 
-        h1 { color: #222; }
-        p { color: #555; font-size: 18px; }
+        h1 {
+            color: #1677d2;
+            font-size: 30px;
+        }
 
-        button {
-            padding: 12px 22px;
-            margin: 10px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
+        p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        a {
+            display: block;
+            background: #168cf0;
             color: white;
+            padding: 14px;
+            margin-top: 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
         }
 
-        .teacher { background: #4CAF50; }
-        .student { background: #2196F3; }
+        a.secondary {
+            background: #176b45;
+        }
     </style>
 </head>
-
 <body>
-    <div class="box">
+    <div class="card">
         <h1>SamruddhiAttendX</h1>
         <p>Smart QR-Based Attendance System</p>
-        <p>Attendance made simple and digital.</p>
+        <p>Register students, generate QR codes, and record attendance.</p>
 
-        <a href="/teacher"><button class="teacher">Teacher Login</button></a>
-        <a href="/student"><button class="student">Student Login</button></a>
-        
+        <a href="{{ url_for('register') }}">Student Registration</a>
+        <a href="{{ url_for('teacher') }}" class="secondary">Teacher Login</a>
     </div>
 </body>
 </html>
