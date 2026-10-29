@@ -4,12 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Dashboard | Smart QR Attendance</title>
+    <title>Teacher Dashboard | SamruddhiAttendX</title>
 
     <style>
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
         body {
             margin: 0;
@@ -32,30 +30,19 @@
             margin-bottom: 24px;
         }
 
-        .header h1 {
-            margin: 0 0 8px;
-        }
-
-        .header p {
-            margin: 0;
-        }
-
         .card {
             background: white;
             padding: 24px;
             margin-bottom: 24px;
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 4px 15px rgba(0,0,0,.06);
         }
 
-        h2 {
-            margin-top: 0;
-            color: #243047;
-        }
+        h1, h2 { margin-top: 0; }
 
         label {
             display: block;
-            margin-bottom: 8px;
+            margin: 14px 0 8px;
             font-weight: bold;
         }
 
@@ -66,13 +53,11 @@
             border: 1px solid #ccd3df;
             border-radius: 6px;
             font-size: 16px;
-            margin-bottom: 15px;
         }
 
-        button,
-        .button {
+        button, .button {
             display: inline-block;
-            border: none;
+            border: 0;
             border-radius: 6px;
             padding: 12px 18px;
             color: white;
@@ -80,43 +65,25 @@
             font-size: 15px;
             font-weight: bold;
             cursor: pointer;
+            margin-top: 12px;
         }
 
-        .blue-button {
-            background: #1668f0;
-        }
-
-        .green-button {
-            background: #198754;
-        }
-
-        .red-button {
-            background: #dc3545;
-        }
-
-        button:hover,
-        .button:hover {
-            opacity: 0.88;
-        }
+        .blue { background: #1668f0; }
+        .green { background: #198754; }
+        .red { background: #dc3545; }
+        .grey { background: #596579; }
 
         .message {
             padding: 12px;
-            margin-bottom: 15px;
+            margin: 14px 0;
             border-radius: 6px;
             background: #fff3cd;
             color: #664d03;
         }
 
-        .success {
-            background: #d1e7dd;
-            color: #0f5132;
-            padding: 12px;
-            border-radius: 6px;
-        }
-
         .qr-section {
             text-align: center;
-            margin-top: 25px;
+            margin-top: 24px;
             padding: 20px;
             background: #f8faff;
             border-radius: 10px;
@@ -127,14 +94,10 @@
             width: 220px;
             max-width: 100%;
             margin: 20px auto;
-            border: 1px solid #ddd;
-            padding: 8px;
             background: white;
         }
 
-        .table-wrap {
-            overflow-x: auto;
-        }
+        .table-wrap { overflow-x: auto; }
 
         table {
             width: 100%;
@@ -143,8 +106,7 @@
             min-width: 600px;
         }
 
-        th,
-        td {
+        th, td {
             border: 1px solid #ddd;
             padding: 12px;
             text-align: left;
@@ -155,174 +117,196 @@
             color: white;
         }
 
-        tbody tr:nth-child(even) {
-            background: #f5f8fc;
-        }
+        tbody tr:nth-child(even) { background: #f5f8fc; }
 
-        .table-actions {
+        .actions {
             display: flex;
-            gap: 12px;
+            gap: 10px;
             flex-wrap: wrap;
-            margin: 15px 0;
-        }
-
-        .empty-message {
-            text-align: center;
-            padding: 20px;
-            color: #667085;
-        }
-
-        .footer {
-            text-align: center;
-            color: #667085;
-            padding: 15px;
         }
 
         @media (max-width: 600px) {
-            body {
-                padding: 12px;
-            }
-
-            .card,
-            .header {
-                padding: 18px;
-            }
-
-            .header h1 {
-                font-size: 24px;
-            }
+            body { padding: 12px; }
+            .card, .header { padding: 18px; }
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
+<div class="container">
 
-        <header class="header">
-            <h1>Teacher Dashboard</h1>
-            <p>Smart QR-Based Attendance Management System</p>
-        </header>
+    <header class="header">
+        <h1>Teacher Dashboard</h1>
+        <p>SamruddhiAttendX — Smart QR-Based Attendance System</p>
+    </header>
 
-        <section class="card">
-            <h2>Generate Attendance QR Code</h2>
+    <section class="card">
+        <h2>Generate Attendance QR Code</h2>
+        <p>
+            Set the attendance location, then generate a QR code.
+            Students must be within 50 metres of this location.
+        </p>
 
-            <p>
-                Enter the subject name to generate a QR code
-                for student attendance.
-            </p>
+        {% if error %}
+        <div class="message">{{ error }}</div>
+        {% endif %}
 
-            {% if error %}
-                <div class="message">
-                    {{ error }}
-                </div>
-            {% endif %}
+        <button type="button" class="grey" id="locationButton">
+            Use My Current Location
+        </button>
 
-            <form method="POST"
-                  action="{{ url_for('dashboard') }}">
+        <p id="locationStatus" role="status">
+            Location has not been set.
+        </p>
 
-                <label for="subject">Subject Name</label>
+        <form method="POST" action="{{ url_for('dashboard') }}"
+              id="qrForm">
 
-                <input
-                    type="text"
-                    id="subject"
-                    name="subject"
-                    placeholder="Example: Python Programming"
-                    required
-                >
+            <label for="subject">Subject Name</label>
+            <input
+                type="text"
+                id="subject"
+                name="subject"
+                placeholder="Example: Python Programming"
+                required
+            >
 
-                <button type="submit" class="blue-button">
-                    Generate QR Code
-                </button>
-            </form>
+            <input type="hidden" id="teacher_latitude"
+                   name="teacher_latitude">
+            <input type="hidden" id="teacher_longitude"
+                   name="teacher_longitude">
 
-            {% if qr_image %}
-                <div class="qr-section">
-                    <h2>Attendance QR Code</h2>
+            <br>
+            <button type="submit" class="blue">
+                Generate QR Code
+            </button>
+        </form>
 
-                    <p>
-                        <strong>Subject:</strong>
-                        {{ qr_subject }}
-                    </p>
+        {% if qr_image %}
+        <div class="qr-section">
+            <h2>Attendance QR Code</h2>
+            <p><strong>Subject:</strong> {{ qr_subject }}</p>
 
-                    <img
-                        class="qr-image"
-                        src="data:image/png;base64,{{ qr_image }}"
-                        alt="Attendance QR Code"
-                    >
+            <img class="qr-image"
+                 src="data:image/png;base64,{{ qr_image }}"
+                 alt="Attendance QR Code">
 
-                    <p>
-                        <strong>QR expiry time:</strong>
-                        {{ qr_expires_at }}
-                    </p>
+            <p><strong>Expires at:</strong> {{ qr_expires_at }}</p>
+            <p>QR code validity: 5 minutes.</p>
+            <p>Allowed student distance: 50 metres.</p>
+        </div>
+        {% endif %}
+    </section>
 
-                    <p>
-                        This QR code expires after 5 minutes.
-                        Students must scan it before it expires.
-                    </p>
-                </div>
-            {% endif %}
-        </section>
+    <section class="card">
+        <h2>Attendance Records</h2>
 
-        <section class="card">
-            <h2>Attendance Records</h2>
+        <div class="actions">
+            <a href="{{ url_for('download_attendance') }}"
+               class="button green">
+                Download Attendance Sheet (CSV)
+            </a>
 
-            <p>
-                View the attendance marked by registered students.
-            </p>
-
-            <div class="table-actions">
-                <a
-                    href="{{ url_for('download_attendance') }}"
-                    class="button green-button"
-                >
-                    Download Attendance Sheet (CSV)
-                </a>
-
-                <a
-                    href="{{ url_for('logout') }}"
-                    class="button red-button"
-                >
-                    Logout
-                </a>
-            </div>
-
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Student ID</th>
-                            <th>Student Name</th>
-                            <th>Subject</th>
-                            <th>Attendance Time</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                        {% if records %}
-                            {% for record in records %}
-                                <tr>
-                                    <td>{{ record['student_id'] }}</td>
-                                    <td>{{ record['student_name'] }}</td>
-                                    <td>{{ record['subject'] }}</td>
-                                    <td>{{ record['recorded_at'] }}</td>
-                                </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="4" class="empty-message">
-                                    No attendance records yet.
-                                </td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <div class="footer">
-            <p>Smart QR-Based Attendance System | College Project</p>
+            <a href="{{ url_for('logout') }}"
+               class="button red">
+                Logout
+            </a>
         </div>
 
-    </div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>Student ID</th>
+                    <th>Student Name</th>
+                    <th>Subject</th>
+                    <th>Attendance Time</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                {% if records %}
+                    {% for record in records %}
+                    <tr>
+                        <td>{{ record['student_id'] }}</td>
+                        <td>{{ record['student_name'] }}</td>
+                        <td>{{ record['subject'] }}</td>
+                        <td>{{ record['recorded_at'] }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4">No attendance records yet.</td>
+                    </tr>
+                {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <footer style="text-align:center; color:#667085;">
+        College Project — SamruddhiAttendX
+    </footer>
+
+</div>
+
+<script>
+    const locationButton = document.getElementById("locationButton");
+    const locationStatus = document.getElementById("locationStatus");
+    const latitudeInput = document.getElementById("teacher_latitude");
+    const longitudeInput = document.getElementById("teacher_longitude");
+    const qrForm = document.getElementById("qrForm");
+
+    locationButton.addEventListener("click", function () {
+        if (!navigator.geolocation) {
+            locationStatus.textContent =
+                "Your browser does not support location access.";
+            return;
+        }
+
+        locationStatus.textContent =
+            "Requesting location permission...";
+
+        navigator.geolocation.getCurrentPosition(
+            function (position) {
+                latitudeInput.value = position.coords.latitude;
+                longitudeInput.value = position.coords.longitude;
+
+                locationStatus.textContent =
+                    "Location set successfully. You can generate the QR code.";
+
+                locationStatus.style.color = "green";
+            },
+            function (error) {
+                latitudeInput.value = "";
+                longitudeInput.value = "";
+
+                const messages = {
+                    1: "Location permission denied. Allow location access in your browser.",
+                    2: "Location unavailable. Check your device GPS and try again.",
+                    3: "Location request timed out. Please try again."
+                };
+
+                locationStatus.textContent =
+                    messages[error.code] || "Could not get your location.";
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            }
+        );
+    });
+
+    qrForm.addEventListener("submit", function (event) {
+        if (!latitudeInput.value || !longitudeInput.value) {
+            event.preventDefault();
+            locationStatus.textContent =
+                "Please click Use My Current Location before generating the QR code.";
+            locationStatus.style.color = "red";
+        }
+    });
+</script>
+
 </body>
 </html>
