@@ -1,179 +1,113 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Attendance | SamruddhiAttendX</title>
+    <title>Student Attendance</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #f1f5f9;
+            background: #f2f5fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
             margin: 0;
-            padding: 20px;
         }
         .container {
-            max-width: 450px;
-            margin: 40px auto;
-            padding: 25px;
             background: white;
+            padding: 30px;
             border-radius: 12px;
-            box-shadow: 0 4px 15px #00000015;
+            width: 320px;
+            box-shadow: 0 4px 15px #0002;
         }
-        h1 {
-            color: #1d4ed8;
-            text-align: center;
-        }
-        p {
-            line-height: 1.5;
-        }
-        input, button {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 12px;
-            margin-top: 12px;
-            border-radius: 7px;
-            font-size: 16px;
-        }
+        h2 { text-align: center; }
         input {
-            border: 1px solid #cbd5e1;
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            box-sizing: border-box;
         }
         button {
-            border: none;
-            background: #2563eb;
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            background: #2457d6;
             color: white;
+            border: none;
+            border-radius: 6px;
             cursor: pointer;
         }
-        button:disabled {
-            background: #94a3b8;
-            cursor: not-allowed;
-        }
-        .message {
-            background: #eff6ff;
-            padding: 10px;
-            border-radius: 7px;
-            overflow-wrap: anywhere;
-        }
-        .status {
-            font-size: 14px;
-            color: #475569;
-        }
+        .message { text-align: center; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>SamruddhiAttendX</h1>
-        <h2>Mark Your Attendance</h2>
+        <h2>Student Attendance</h2>
+
         <p>Subject: {{ subject }}</p>
 
         {% if message %}
-        <p class="message">{{ message }}</p>
+            <p class="message">{{ message }}</p>
         {% endif %}
 
-        {% if valid %}
-        <p>Enter the Student ID you received during registration.</p>
-        <p class="status">
-            Your location must be within 50 metres of the location
-            selected by the teacher.
-        </p>
+        {% if not valid %}
+            <form method="POST" action="{{ url_for('student') }}">
+                <input type="hidden" name="token" value="{{ token }}">
 
-        <form id="attendanceForm" method="POST">
-            <input type="hidden" name="token" value="{{ token }}">
+                <input
+                    type="text"
+                    name="student_id"
+                    placeholder="Enter Student ID"
+                    required
+                >
 
-            <label for="student_id">Student ID</label>
-            <input
-                type="text"
-                id="student_id"
-                name="student_id"
-                placeholder="Example: STU0001"
-                required
-            >
+                <input type="hidden" name="latitude" id="latitude">
+                <input type="hidden" name="longitude" id="longitude">
 
-            <input type="hidden" id="latitude" name="latitude">
-            <input type="hidden" id="longitude" name="longitude">
+                <button type="button" onclick="getLocation()">
+                    Get My Location
+                </button>
 
-            <button type="button" id="locationButton">
-                Get My Current Location
-            </button>
-
-            <p id="locationStatus" class="status">
-                Allow location access when your browser asks.
-            </p>
-
-            <button type="submit" id="submitButton" disabled>
-                Mark Attendance
-            </button>
-        </form>
-
-        <script>
-            const locationButton =
-                document.getElementById("locationButton");
-            const submitButton =
-                document.getElementById("submitButton");
-            const locationStatus =
-                document.getElementById("locationStatus");
-            const latitudeInput =
-                document.getElementById("latitude");
-            const longitudeInput =
-                document.getElementById("longitude");
-
-            locationButton.addEventListener("click", function () {
-                if (!navigator.geolocation) {
-                    locationStatus.textContent =
-                        "Your browser does not support location access.";
-                    return;
-                }
-
-                locationButton.disabled = true;
-                locationStatus.textContent =
-                    "Getting your location. Please wait...";
-
-                navigator.geolocation.getCurrentPosition(
-                    function (position) {
-                        latitudeInput.value =
-                            position.coords.latitude;
-                        longitudeInput.value =
-                            position.coords.longitude;
-
-                        locationStatus.textContent =
-                            "Location received. You can now mark attendance.";
-                        submitButton.disabled = false;
-                        locationButton.disabled = false;
-                    },
-                    function (error) {
-                        latitudeInput.value = "";
-                        longitudeInput.value = "";
-                        submitButton.disabled = true;
-                        locationButton.disabled = false;
-
-                        locationStatus.textContent =
-                            "Could not get location. Allow location permission " +
-                            "in your browser and try again.";
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 15000,
-                        maximumAge: 0
-                    }
-                );
-            });
-
-            document.getElementById("attendanceForm")
-                .addEventListener("submit", function (event) {
-                    if (!latitudeInput.value ||
-                        !longitudeInput.value) {
-                        event.preventDefault();
-                        locationStatus.textContent =
-                            "Please get your current location first.";
-                    }
-                });
-        </script>
-        {% else %}
-        <p>
-            This QR code is invalid or has expired.
-            Please ask your teacher to generate a new QR code.
-        </p>
+                <button type="submit">
+                    Mark Attendance
+                </button>
+            </form>
+            <p id="locationStatus"></p>
         {% endif %}
     </div>
+
+    <script>
+        function getLocation() {
+            const status = document.getElementById("locationStatus");
+
+            if (!navigator.geolocation) {
+                status.textContent = "Location is not supported by this browser.";
+                return;
+            }
+
+            status.textContent = "Getting your location...";
+
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    document.getElementById("latitude").value =
+                        position.coords.latitude;
+
+                    document.getElementById("longitude").value =
+                        position.coords.longitude;
+
+                    status.textContent = "Location captured successfully. Now mark attendance.";
+                },
+                function(error) {
+                    status.textContent = "Unable to get location. Please allow location permission and try again.";
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 0
+                }
+            );
+        }
+    </script>
 </body>
 </html>
