@@ -1,311 +1,169 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Dashboard | SamruddhiAttendX</title>
-
+    <title>Teacher Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        * { box-sizing: border-box; }
-
         body {
-            margin: 0;
-            padding: 20px;
             font-family: Arial, sans-serif;
-            background: #f3f6fb;
-            color: #243047;
+            background: #f2f5fa;
+            padding: 20px;
+            margin: 0;
         }
-
         .container {
-            max-width: 1100px;
-            margin: 20px auto;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #1668f0, #5145cd);
-            color: white;
-            padding: 28px;
-            border-radius: 14px;
-            margin-bottom: 24px;
-        }
-
-        .card {
+            max-width: 800px;
+            margin: auto;
             background: white;
-            padding: 24px;
-            margin-bottom: 24px;
+            padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,.06);
         }
-
-        h1, h2 { margin-top: 0; }
-
-        label {
-            display: block;
-            margin: 14px 0 8px;
-            font-weight: bold;
-        }
-
         input {
             width: 100%;
-            max-width: 450px;
             padding: 12px;
-            border: 1px solid #ccd3df;
-            border-radius: 6px;
-            font-size: 16px;
+            margin: 10px 0;
+            box-sizing: border-box;
         }
-
-        button, .button {
+        button, .download {
             display: inline-block;
-            border: 0;
-            border-radius: 6px;
             padding: 12px 18px;
+            background: #2457d6;
             color: white;
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 12px;
-        }
-
-        .blue { background: #1668f0; }
-        .green { background: #198754; }
-        .red { background: #dc3545; }
-        .grey { background: #596579; }
-
-        .message {
-            padding: 12px;
-            margin: 14px 0;
+            border: none;
             border-radius: 6px;
-            background: #fff3cd;
-            color: #664d03;
+            text-decoration: none;
+            cursor: pointer;
+            margin: 5px 0;
         }
-
-        .qr-section {
-            text-align: center;
-            margin-top: 24px;
-            padding: 20px;
-            background: #f8faff;
-            border-radius: 10px;
-        }
-
-        .qr-image {
-            display: block;
-            width: 220px;
-            max-width: 100%;
-            margin: 20px auto;
-            background: white;
-        }
-
-        .table-wrap { overflow-x: auto; }
-
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-            min-width: 600px;
+            margin-top: 15px;
         }
-
         th, td {
             border: 1px solid #ddd;
-            padding: 12px;
+            padding: 9px;
             text-align: left;
         }
-
-        th {
-            background: #1668f0;
-            color: white;
+        th { background: #edf1fa; }
+        .error { color: red; }
+        .qr {
+            text-align: center;
+            margin: 20px 0;
         }
-
-        tbody tr:nth-child(even) { background: #f5f8fc; }
-
-        .actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        @media (max-width: 600px) {
-            body { padding: 12px; }
-            .card, .header { padding: 18px; }
+        .qr img {
+            width: 220px;
+            max-width: 100%;
         }
     </style>
 </head>
-
 <body>
 <div class="container">
 
-    <header class="header">
-        <h1>Teacher Dashboard</h1>
-        <p>SamruddhiAttendX — Smart QR-Based Attendance System</p>
-    </header>
+    <h2>Teacher Dashboard</h2>
+    <p>Welcome, {{ teacher_name }}!</p>
 
-    <section class="card">
-        <h2>Generate Attendance QR Code</h2>
-        <p>
-            Set the attendance location, then generate a QR code.
-            Students must be within 50 metres of this location.
-        </p>
+    <p><a href="{{ url_for('logout') }}">Logout</a></p>
 
-        {% if error %}
-        <div class="message">{{ error }}</div>
-        {% endif %}
+    {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
 
-        <button type="button" class="grey" id="locationButton">
-            Use My Current Location
+    <hr>
+
+    <h3>Generate Daily QR Code</h3>
+
+    <form method="POST" action="{{ url_for('dashboard') }}">
+        <input
+            type="text"
+            name="subject"
+            placeholder="Enter Subject Name"
+            required
+        >
+
+        <input type="hidden" name="teacher_latitude" id="teacher_latitude">
+        <input type="hidden" name="teacher_longitude" id="teacher_longitude">
+
+        <button type="button" onclick="getTeacherLocation()">
+            Capture Teacher Location
         </button>
 
-        <p id="locationStatus" role="status">
-            Location has not been set.
-        </p>
+        <p id="locationStatus"></p>
 
-        <form method="POST" action="{{ url_for('dashboard') }}"
-              id="qrForm">
+        <button type="submit">Generate QR Code</button>
+    </form>
 
-            <label for="subject">Subject Name</label>
-            <input
-                type="text"
-                id="subject"
-                name="subject"
-                placeholder="Example: Python Programming"
-                required
-            >
-
-            <input type="hidden" id="teacher_latitude"
-                   name="teacher_latitude">
-            <input type="hidden" id="teacher_longitude"
-                   name="teacher_longitude">
-
-            <br>
-            <button type="submit" class="blue">
-                Generate QR Code
-            </button>
-        </form>
-
-        {% if qr_image %}
-        <div class="qr-section">
-            <h2>Attendance QR Code</h2>
-            <p><strong>Subject:</strong> {{ qr_subject }}</p>
-
-            <img class="qr-image"
-                 src="data:image/png;base64,{{ qr_image }}"
-                 alt="Attendance QR Code">
-
-            <p><strong>Expires at:</strong> {{ qr_expires_at }}</p>
-            <p>QR code validity: 5 minutes.</p>
-            <p>Allowed student distance: 50 metres.</p>
+    {% if qr_data %}
+        <div class="qr">
+            <h3>Scan this QR Code</h3>
+            <img src="{{ qr_data }}" alt="Attendance QR Code">
+            <p>QR code expires after 5 minutes.</p>
         </div>
-        {% endif %}
-    </section>
+    {% endif %}
 
-    <section class="card">
-        <h2>Attendance Records</h2>
+    <hr>
 
-        <div class="actions">
-            <a href="{{ url_for('download_attendance') }}"
-               class="button green">
-                Download Attendance Sheet (CSV)
-            </a>
+    <h3>Attendance Records</h3>
 
-            <a href="{{ url_for('logout') }}"
-               class="button red">
-                Logout
-            </a>
-        </div>
+    <a class="download" href="{{ url_for('download_attendance') }}">
+        Download Attendance CSV
+    </a>
 
-        <div class="table-wrap">
-            <table>
-                <thead>
-                <tr>
-                    <th>Student ID</th>
-                    <th>Student Name</th>
-                    <th>Subject</th>
-                    <th>Attendance Time</th>
-                </tr>
-                </thead>
+    <table>
+        <tr>
+            <th>Student ID</th>
+            <th>Student Name</th>
+            <th>Subject</th>
+            <th>Date and Time</th>
+        </tr>
 
-                <tbody>
-                {% if records %}
-                    {% for record in records %}
-                    <tr>
-                        <td>{{ record['student_id'] }}</td>
-                        <td>{{ record['student_name'] }}</td>
-                        <td>{{ record['subject'] }}</td>
-                        <td>{{ record['recorded_at'] }}</td>
-                    </tr>
-                    {% endfor %}
-                {% else %}
-                    <tr>
-                        <td colspan="4">No attendance records yet.</td>
-                    </tr>
-                {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <footer style="text-align:center; color:#667085;">
-        College Project — SamruddhiAttendX
-    </footer>
+        {% for record in records %}
+        <tr>
+            <td>{{ record.student_id }}</td>
+            <td>{{ record.student_name }}</td>
+            <td>{{ record.subject }}</td>
+            <td>{{ record.attendance_time }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="4">No attendance records yet.</td>
+        </tr>
+        {% endfor %}
+    </table>
 
 </div>
 
 <script>
-    const locationButton = document.getElementById("locationButton");
-    const locationStatus = document.getElementById("locationStatus");
-    const latitudeInput = document.getElementById("teacher_latitude");
-    const longitudeInput = document.getElementById("teacher_longitude");
-    const qrForm = document.getElementById("qrForm");
+function getTeacherLocation() {
+    const status = document.getElementById("locationStatus");
 
-    locationButton.addEventListener("click", function () {
-        if (!navigator.geolocation) {
-            locationStatus.textContent =
-                "Your browser does not support location access.";
-            return;
+    if (!navigator.geolocation) {
+        status.textContent = "Location is not supported by this browser.";
+        return;
+    }
+
+    status.textContent = "Getting teacher location...";
+
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            document.getElementById("teacher_latitude").value =
+                position.coords.latitude;
+
+            document.getElementById("teacher_longitude").value =
+                position.coords.longitude;
+
+            status.textContent = "Teacher location captured successfully.";
+        },
+        function(error) {
+            status.textContent = "Location access failed. Please allow location permission.";
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
         }
-
-        locationStatus.textContent =
-            "Requesting location permission...";
-
-        navigator.geolocation.getCurrentPosition(
-            function (position) {
-                latitudeInput.value = position.coords.latitude;
-                longitudeInput.value = position.coords.longitude;
-
-                locationStatus.textContent =
-                    "Location set successfully. You can generate the QR code.";
-
-                locationStatus.style.color = "green";
-            },
-            function (error) {
-                latitudeInput.value = "";
-                longitudeInput.value = "";
-
-                const messages = {
-                    1: "Location permission denied. Allow location access in your browser.",
-                    2: "Location unavailable. Check your device GPS and try again.",
-                    3: "Location request timed out. Please try again."
-                };
-
-                locationStatus.textContent =
-                    messages[error.code] || "Could not get your location.";
-            },
-            {
-                enableHighAccuracy: true,
-                timeout: 15000,
-                maximumAge: 0
-            }
-        );
-    });
-
-    qrForm.addEventListener("submit", function (event) {
-        if (!latitudeInput.value || !longitudeInput.value) {
-            event.preventDefault();
-            locationStatus.textContent =
-                "Please click Use My Current Location before generating the QR code.";
-            locationStatus.style.color = "red";
-        }
-    });
+    );
+}
 </script>
 
 </body>
