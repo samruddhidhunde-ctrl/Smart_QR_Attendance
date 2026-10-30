@@ -1,68 +1,66 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Teacher Registration</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #f1f5f9;
-            padding: 20px;
+            background: #f2f5fa;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
         }
         .container {
-            max-width: 420px;
-            margin: 40px auto;
             background: white;
-            padding: 25px;
+            padding: 30px;
             border-radius: 12px;
-            box-shadow: 0 4px 15px #00000015;
+            width: 320px;
+            box-shadow: 0 4px 15px #0002;
         }
-        h1 {
-            text-align: center;
-            color: #2563eb;
-        }
-        input, button {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 12px;
-            margin-top: 14px;
-            border-radius: 7px;
-            font-size: 16px;
-        }
+        h2 { text-align: center; }
         input {
-            border: 1px solid #cbd5e1;
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            box-sizing: border-box;
         }
         button {
-            border: none;
-            background: #2563eb;
+            width: 100%;
+            padding: 12px;
+            background: #2457d6;
             color: white;
+            border: none;
+            border-radius: 6px;
             cursor: pointer;
         }
-        .error { color: #dc2626; }
-        .success { color: #15803d; }
-        a { color: #2563eb; }
+        .message {
+            color: red;
+            text-align: center;
+        }
+        a {
+            display: block;
+            text-align: center;
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>SamruddhiAttendX</h1>
-        <h2>Teacher Registration</h2>
+        <h2>Create Teacher Account</h2>
 
         {% if error %}
-        <p class="error">{{ error }}</p>
+            <p class="message">{{ error }}</p>
         {% endif %}
 
-        {% if success %}
-        <p class="success">{{ success }}</p>
-        <a href="{{ url_for('teacher') }}">Go to Teacher Login</a>
-        {% else %}
-        <form method="POST">
+        <form action="{{ url_for('teacher_register') }}" method="POST">
             <input
                 type="text"
                 name="teacher_name"
-                placeholder="Full Name"
+                placeholder="Enter Full Name"
                 required
             >
 
@@ -70,7 +68,6 @@
                 type="text"
                 name="username"
                 placeholder="Create Username"
-                minlength="4"
                 required
             >
 
@@ -85,10 +82,7 @@
             <button type="submit">Create Teacher Account</button>
         </form>
 
-        <p>Already registered?
-            <a href="{{ url_for('teacher') }}">Login here</a>
-        </p>
-        {% endif %}
+        <a href="{{ url_for('teacher') }}">Back to Login</a>
     </div>
 </body>
 </html>
