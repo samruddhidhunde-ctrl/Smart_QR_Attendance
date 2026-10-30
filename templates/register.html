@@ -1,223 +1,66 @@
 
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Registration | SamruddhiAttendX</title>
-
+    <title>Student Registration</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        * {
-            box-sizing: border-box;
-        }
-
         body {
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #f2f5fa;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: Arial, sans-serif;
-            background: #eff5ff;
+            min-height: 100vh;
+            margin: 0;
         }
-
         .container {
-            width: 100%;
-            max-width: 650px;
-            padding: 40px;
             background: white;
-            border-radius: 24px;
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.08);
-            text-align: center;
-        }
-
-        h1 {
-            color: #1976d2;
-            font-size: 34px;
-            margin-top: 0;
-        }
-
-        .subtitle {
-            color: #555;
-            font-size: 18px;
-            line-height: 1.6;
-        }
-
-        form {
-            margin-top: 28px;
-        }
-
-        input {
-            width: 100%;
-            padding: 16px;
-            border: 1px solid #ccc;
+            padding: 30px;
             border-radius: 12px;
-            font-size: 17px;
-            margin-bottom: 18px;
+            width: 320px;
+            box-shadow: 0 4px 15px #0002;
         }
-
-        button {
+        input, button {
             width: 100%;
-            padding: 16px;
-            background: #168cf0;
+            padding: 12px;
+            margin: 10px 0;
+            box-sizing: border-box;
+        }
+        button {
+            background: #2457d6;
             color: white;
             border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            cursor: pointer;
+            border-radius: 6px;
         }
-
-        button:hover {
-            background: #086dcc;
-        }
-
-        .success {
-            margin-top: 25px;
-            padding: 22px;
-            background: #e7f7ed;
-            border: 1px solid #a5dfb8;
-            border-radius: 12px;
-        }
-
-        .success h2 {
-            color: #16763c;
-        }
-
-        .student-id {
-            display: inline-block;
-            padding: 12px 20px;
-            background: white;
-            border: 2px dashed #198754;
-            border-radius: 8px;
-            color: #16763c;
-            font-size: 30px;
-            font-weight: bold;
-            letter-spacing: 2px;
-        }
-
-        .error {
-            padding: 12px;
-            background: #fde8e8;
-            color: #a61b1b;
-            border-radius: 8px;
-        }
-
-        a {
-            display: inline-block;
-            margin-top: 24px;
-            color: #0879df;
-            text-decoration: none;
-            font-size: 17px;
-        }
-
-        @media (max-width: 500px) {
-            .container {
-                padding: 25px 20px;
-            }
-
-            h1 {
-                font-size: 28px;
-            }
-        }
+        .error { color: red; }
+        .success { color: green; }
     </style>
 </head>
-
 <body>
-    <main class="container">
+    <div class="container">
+        <h2>Student Registration</h2>
 
-        <h1>Student Registration</h1>
-
-        <p class="subtitle">
-            SamruddhiAttendX Smart QR-Based Attendance System
-        </p>
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
 
         {% if student_id %}
-
-            <div class="success">
-                <h2>Registration Successful!</h2>
-
-                <p>Your unique Student ID is:</p>
-
-                <div class="student-id">
-                    {{ student_id }}
-                </div>
-
-                <p>
-                    Please save this ID. You will need it
-                    to mark your attendance.
-                </p>
-
-                <button
-                    type="button"
-                    onclick="copyStudentId()">
-                    Copy Student ID
-                </button>
-
-                <p id="copy-message"></p>
-            </div>
-
-            <script>
-                function copyStudentId() {
-                    const studentId = {{ student_id | tojson }};
-
-                    if (navigator.clipboard &&
-                        window.isSecureContext) {
-                        navigator.clipboard.writeText(studentId)
-                            .then(function () {
-                                document.getElementById(
-                                    "copy-message"
-                                ).textContent = "Student ID copied!";
-                            })
-                            .catch(function () {
-                                document.getElementById(
-                                    "copy-message"
-                                ).textContent =
-                                    "Please save your Student ID: "
-                                    + studentId;
-                            });
-                    } else {
-                        document.getElementById(
-                            "copy-message"
-                        ).textContent =
-                            "Please save your Student ID: "
-                            + studentId;
-                    }
-                }
-            </script>
-
+            <p class="success">Registration successful!</p>
+            <p>Your Student ID is: <strong>{{ student_id }}</strong></p>
         {% else %}
-
-            <p class="subtitle">
-                Register to receive your unique Student ID.
-            </p>
-
-            {% if error %}
-                <div class="error">
-                    {{ error }}
-                </div>
-            {% endif %}
-
-            <form method="POST"
-                  action="{{ url_for('register') }}">
-
+            <form method="POST" action="{{ url_for('register') }}">
                 <input
                     type="text"
                     name="student_name"
-                    placeholder="Enter your full name"
-                    maxlength="100"
+                    placeholder="Enter Full Name"
                     required
                 >
-
-                <button type="submit">
-                    Register Student
-                </button>
+                <button type="submit">Register</button>
             </form>
-
         {% endif %}
 
         <a href="{{ url_for('home') }}">Back to Home</a>
-
-    </main>
+    </div>
 </body>
 </html>
