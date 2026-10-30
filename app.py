@@ -1,31 +1,31 @@
 
+import os
+import io
+import csv
+import math
+import sqlite3
+import secrets
+import base64
+from datetime import datetime, timedelta
+from functools import wraps
+
+import qrcode
 from flask import (
     Flask, render_template, request, redirect,
-    url_for, session, Response
+    url_for, session, flash, make_response
 )
-import sqlite3
-import qrcode
-import io
-import base64
-import csv
-import secrets
-import math
-import os
-from datetime import datetime, timedelta, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = os.environ.get(
-    "SECRET_KEY", "demo-key-change-before-production"
-)
+app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key")
 
 DATABASE = "attendance.db"
-QR_EXPIRY_MINUTES = 5
 ALLOWED_RADIUS_METRES = 50
+QR_EXPIRY_MINUTES = 5
+
+# Temporary QR data. QR codes expire after five minutes.
 active_qr = {}
 
-
-# ---------------- DATABASE ----------------
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -35,79 +35,47 @@ def get_db():
 
 def init_db():
     conn = get_db()
+    cur = conn.cursor()
 
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS students (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            student_id TEXT UNIQUE,
-            student_name TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        )
-    """)
-
-    conn.execute("""
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS teachers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             teacher_name TEXT NOT NULL,
-            username TEXT UNIQUE NOT NULL,
+            username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
             created_at TEXT NOT NULL
         )
     """)
 
-    conn.execute("""
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS students (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            student_id TEXT NOT NULL UNIQUE,
+            student_name TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    cur.execute("""
         CREATE TABLE IF NOT EXISTS attendance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             student_id TEXT NOT NULL,
             student_name TEXT NOT NULL,
             subject TEXT NOT NULL,
-            token TEXT NOT NULL,
-            recorded_at TEXT NOT NULL,
-            UNIQUE(student_id, token)
+            teacher_id INTEGER,
+            attendance_time TEXT NOT NULL,
+            latitude REAL,
+            longitude REAL
         )
     """)
 
-    # Add teacher_id to an existing attendance table
+    # Add teacher_id to older attendance databases if necessary.
     columns = [
         row["name"]
-        for row in conn.execute(
-            "PRAGMA table_info(attendance)"
-        ).fetchall()
+        for row in cur.execute("PRAGMA table_info(attendance)").fetchall()
     ]
-
     if "teacher_id" not in columns:
-        conn.execute(
-            "ALTER TABLE attendance ADD COLUMN teacher_id INTEGER"
-        )
-
-    # Preserve the old teacher login and existing records
-    legacy = conn.execute(
-        "SELECT id FROM teachers WHERE username = ?",
-        ("teacher",)
-    ).fetchone()
-
-    if not legacy:
-        conn.execute("""
-            INSERT INTO teachers
-            (teacher_name, username, password_hash, created_at)
-            VALUES (?, ?, ?, ?)
-        """, (
-            "Demo Teacher",
-            "teacher",
-            generate_password_hash("teach123"),
-            datetime.now(timezone.utc).isoformat()
-        ))
-
-        legacy = conn.execute(
-            "SELECT id FROM teachers WHERE username = ?",
-            ("teacher",)
-        ).fetchone()
-
-    # Assign old attendance records to the old demo teacher
-    conn.execute(
-        "UPDATE attendance SET teacher_id = ? WHERE teacher_id IS NULL",
-        (legacy["id"],)
-    )
+        cur.execute("ALTER TABLE attendance ADD COLUMN teacher_id INTEGER")
 
     conn.commit()
     conn.close()
@@ -116,33 +84,43 @@ def init_db():
 init_db()
 
 
-# ---------------- LOCATION DISTANCE ----------------
+def login_required(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if "teacher_id" not in session:
+            return redirect(url_for("teacher"))
+        return func(*args, **kwargs)
+    return wrapper
+
 
 def distance_metres(lat1, lon1, lat2, lon2):
-    earth_radius = 6371000
-
-    lat1 = math.radians(lat1)
-    lat2 = math.radians(lat2)
-    delta_lat = math.radians(lat2 - lat1)
-    delta_lon = math.radians(lon2 - lon1)
+    radius = 6371000
+    p1 = math.radians(lat1)
+    p2 = math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
 
     a = (
-        math.sin(delta_lat / 2) ** 2
-        + math.cos(lat1) * math.cos(lat2)
-        * math.sin(delta_lon / 2) ** 2
+        math.sin(dp / 2) ** 2
+        + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
     )
-
-    return earth_radius * 2 * math.atan2(
-        math.sqrt(a), math.sqrt(1 - a)
-    )
+    return radius * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def valid_coordinate(value, minimum, maximum):
+def valid_coordinate(value):
     try:
         number = float(value)
-        return math.isfinite(number) and minimum <= number <= maximum
+        return math.isfinite(number)
     except (TypeError, ValueError):
         return False
+
+
+def qr_image_data(url):
+    image = qrcode.make(url)
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    encoded = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    return "data:image/png;base64," + encoded
 
 
 # ---------------- HOME ----------------
@@ -152,96 +130,44 @@ def home():
     return render_template("index.html")
 
 
-# ---------------- STUDENT REGISTRATION ----------------
-
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    student_id = None
-    error = None
-
-    if request.method == "POST":
-        student_name = request.form.get(
-            "student_name", ""
-        ).strip()
-
-        if not student_name:
-            error = "Please enter your full name."
-        else:
-            conn = get_db()
-
-            cursor = conn.execute("""
-                INSERT INTO students (student_name, created_at)
-                VALUES (?, ?)
-            """, (
-                student_name,
-                datetime.now(timezone.utc).isoformat()
-            ))
-
-            number = cursor.lastrowid
-            student_id = f"STU{number:04d}"
-
-            conn.execute(
-                "UPDATE students SET student_id = ? WHERE id = ?",
-                (student_id, number)
-            )
-
-            conn.commit()
-            conn.close()
-
-    return render_template(
-        "register.html",
-        student_id=student_id,
-        error=error
-    )
-
-
 # ---------------- TEACHER REGISTRATION ----------------
 
 @app.route("/teacher/register", methods=["GET", "POST"])
 def teacher_register():
     error = None
-    success = None
 
     if request.method == "POST":
-        name = request.form.get("teacher_name", "").strip()
+        teacher_name = request.form.get("teacher_name", "").strip()
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
 
-        if not name or not username or not password:
+        if not teacher_name or not username or not password:
             error = "Please fill in all fields."
-        elif len(username) < 4:
-            error = "Username must contain at least 4 characters."
         elif len(password) < 8:
             error = "Password must contain at least 8 characters."
         else:
             conn = get_db()
-
             try:
                 conn.execute("""
                     INSERT INTO teachers
                     (teacher_name, username, password_hash, created_at)
                     VALUES (?, ?, ?, ?)
                 """, (
-                    name,
+                    teacher_name,
                     username,
                     generate_password_hash(password),
-                    datetime.now(timezone.utc).isoformat()
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 ))
-
                 conn.commit()
-                success = "Registration successful! Please log in."
+                conn.close()
+                flash("Account created successfully. Please log in.")
+                return redirect(url_for("teacher"))
 
             except sqlite3.IntegrityError:
-                error = "This username is already registered."
-
-            finally:
                 conn.close()
+                error = "This username already exists. Choose another username."
 
-    return render_template(
-        "teacher_register.html",
-        error=error,
-        success=success
-    )
+    return render_template("teacher_register.html", error=error)
 
 
 # ---------------- TEACHER LOGIN ----------------
@@ -261,17 +187,13 @@ def teacher():
         ).fetchone()
         conn.close()
 
-        if (
-            teacher_record
-            and check_password_hash(
-                teacher_record["password_hash"], password
-            )
+        if teacher_record and check_password_hash(
+            teacher_record["password_hash"], password
         ):
             session.clear()
-            session["teacher_logged_in"] = True
             session["teacher_id"] = teacher_record["id"]
             session["teacher_name"] = teacher_record["teacher_name"]
-
+            session["username"] = teacher_record["username"]
             return redirect(url_for("dashboard"))
 
         error = "Invalid username or password."
@@ -282,89 +204,104 @@ def teacher():
 # ---------------- TEACHER DASHBOARD ----------------
 
 @app.route("/teacher/dashboard", methods=["GET", "POST"])
+@login_required
 def dashboard():
-    if not session.get("teacher_logged_in"):
-        return redirect(url_for("teacher"))
-
-    teacher_id = session["teacher_id"]
-    qr_image = None
-    qr_subject = None
-    qr_expires_at = None
+    qr_data = None
     error = None
 
     if request.method == "POST":
         subject = request.form.get("subject", "").strip()
-        latitude = request.form.get("teacher_latitude", "")
-        longitude = request.form.get("teacher_longitude", "")
+        lat = request.form.get("teacher_latitude", "")
+        lon = request.form.get("teacher_longitude", "")
 
         if not subject:
-            error = "Please enter a subject name."
-        elif not valid_coordinate(latitude, -90, 90):
-            error = "Please set the teacher's location first."
-        elif not valid_coordinate(longitude, -180, 180):
-            error = "Please set the teacher's location first."
+            error = "Please enter the subject."
+        elif not valid_coordinate(lat) or not valid_coordinate(lon):
+            error = "Please capture the teacher's location first."
         else:
-            latitude = float(latitude)
-            longitude = float(longitude)
+            lat = float(lat)
+            lon = float(lon)
 
-            token = secrets.token_urlsafe(24)
-            expires_at = (
-                datetime.now(timezone.utc)
-                + timedelta(minutes=QR_EXPIRY_MINUTES)
-            )
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                error = "Invalid location coordinates."
+            else:
+                token = secrets.token_urlsafe(24)
+                active_qr[token] = {
+                    "subject": subject,
+                    "teacher_id": session["teacher_id"],
+                    "latitude": lat,
+                    "longitude": lon,
+                    "expires": datetime.now() + timedelta(
+                        minutes=QR_EXPIRY_MINUTES
+                    )
+                }
 
-            active_qr[token] = {
-                "subject": subject,
-                "expires_at": expires_at,
-                "latitude": latitude,
-                "longitude": longitude,
-                "teacher_id": teacher_id
-            }
-
-            student_url = (
-                request.url_root.rstrip("/")
-                + url_for("student", token=token)
-            )
-
-            qr = qrcode.QRCode(
-                version=1, box_size=8, border=4
-            )
-            qr.add_data(student_url)
-            qr.make(fit=True)
-
-            image_object = qr.make_image(
-                fill_color="black",
-                back_color="white"
-            )
-
-            buffer = io.BytesIO()
-            image_object.save(buffer, format="PNG")
-
-            qr_image = base64.b64encode(
-                buffer.getvalue()
-            ).decode("utf-8")
-
-            qr_subject = subject
-            qr_expires_at = expires_at.strftime("%H:%M:%S UTC")
+                student_url = url_for(
+                    "student",
+                    token=token,
+                    _external=True
+                )
+                qr_data = qr_image_data(student_url)
 
     conn = get_db()
-
     records = conn.execute("""
-        SELECT student_id, student_name, subject, recorded_at
+        SELECT student_id, student_name, subject, attendance_time
         FROM attendance
         WHERE teacher_id = ?
         ORDER BY id DESC
-    """, (teacher_id,)).fetchall()
-
+    """, (session["teacher_id"],)).fetchall()
     conn.close()
 
     return render_template(
         "dashboard.html",
         records=records,
-        qr_image=qr_image,
-        qr_subject=qr_subject,
-        qr_expires_at=qr_expires_at,
-        error=error
+        qr_data=qr_data,
+        error=error,
+        teacher_name=session.get("teacher_name")
+    )
+
+
+# ---------------- STUDENT REGISTRATION ----------------
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    error = None
+    student_id = None
+
+    if request.method == "POST":
+        student_name = request.form.get("student_name", "").strip()
+
+        if not student_name:
+            error = "Please enter your name."
+        else:
+            conn = get_db()
+            next_number = conn.execute(
+                "SELECT COUNT(*) AS total FROM students"
+            ).fetchone()["total"] + 1
+
+            student_id = "STU" + str(next_number).zfill(4)
+
+            try:
+                conn.execute("""
+                    INSERT INTO students
+                    (student_id, student_name, created_at)
+                    VALUES (?, ?, ?)
+                """, (
+                    student_id,
+                    student_name,
+                    datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                ))
+                conn.commit()
+            except sqlite3.IntegrityError:
+                error = "Registration failed. Please try again."
+                student_id = None
+
+            conn.close()
+
+    return render_template(
+        "register.html",
+        error=error,
+        student_id=student_id
     )
 
 
@@ -372,163 +309,152 @@ def dashboard():
 
 @app.route("/student", methods=["GET", "POST"])
 def student():
-    token = request.args.get("token") or request.form.get("token")
+    token = request.args.get("token") or request.form.get("token", "")
     message = None
     valid = False
+    subject = ""
 
-    qr_info = active_qr.get(token) if token else None
+    qr = active_qr.get(token)
 
-    if qr_info:
-        if datetime.now(timezone.utc) < qr_info["expires_at"]:
-            valid = True
-        else:
-            active_qr.pop(token, None)
-            message = "QR code expired. Ask your teacher for a new one."
-    else:
-        message = "Invalid or expired QR code. Scan a new code."
+    if not qr:
+        message = "Invalid or expired QR code."
+        return render_template(
+            "student.html", token=token,
+            message=message, valid=False, subject=subject
+        )
 
-    if request.method == "POST" and valid:
-        student_id = request.form.get(
-            "student_id", ""
-        ).strip().upper()
+    if datetime.now() > qr["expires"]:
+        active_qr.pop(token, None)
+        message = "QR code has expired. Ask your teacher to generate a new one."
+        return render_template(
+            "student.html", token=token,
+            message=message, valid=False, subject=subject
+        )
 
-        latitude = request.form.get("latitude", "")
-        longitude = request.form.get("longitude", "")
+    subject = qr["subject"]
+
+    if request.method == "POST":
+        student_id = request.form.get("student_id", "").strip()
+        lat = request.form.get("latitude", "")
+        lon = request.form.get("longitude", "")
 
         if not student_id:
-            message = "Please enter your registered Student ID."
-
-        elif not valid_coordinate(latitude, -90, 90):
-            message = "Your location is required. Allow location access and try again."
-
-        elif not valid_coordinate(longitude, -180, 180):
-            message = "Your location is required. Allow location access and try again."
-
+            message = "Please enter your Student ID."
+        elif not valid_coordinate(lat) or not valid_coordinate(lon):
+            message = "Please allow location access and try again."
         else:
-            latitude = float(latitude)
-            longitude = float(longitude)
+            lat = float(lat)
+            lon = float(lon)
 
-            distance = distance_metres(
-                qr_info["latitude"],
-                qr_info["longitude"],
-                latitude,
-                longitude
-            )
-
-            if distance > ALLOWED_RADIUS_METRES:
-                message = (
-                    "Attendance not marked. You are approximately "
-                    f"{distance:.0f} metres from the teacher's "
-                    "selected location. You must be within 50 metres."
-                )
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                message = "Invalid location coordinates."
             else:
-                conn = get_db()
+                distance = distance_metres(
+                    qr["latitude"], qr["longitude"], lat, lon
+                )
 
-                student_record = conn.execute("""
-                    SELECT student_id, student_name
-                    FROM students
-                    WHERE student_id = ?
-                """, (student_id,)).fetchone()
-
-                if not student_record:
-                    message = "Student ID not found. Please register first."
+                if distance > ALLOWED_RADIUS_METRES:
+                    message = (
+                        "Attendance rejected. You are outside the "
+                        "50-metre allowed area."
+                    )
                 else:
-                    try:
-                        conn.execute("""
-                            INSERT INTO attendance
-                            (student_id, student_name, subject, token,
-                             recorded_at, teacher_id)
-                            VALUES (?, ?, ?, ?, ?, ?)
+                    conn = get_db()
+
+                    student_record = conn.execute(
+                        "SELECT * FROM students WHERE student_id = ?",
+                        (student_id,)
+                    ).fetchone()
+
+                    if not student_record:
+                        message = "Student ID not found. Register first."
+                    else:
+                        already_marked = conn.execute("""
+                            SELECT id FROM attendance
+                            WHERE student_id = ?
+                            AND subject = ?
+                            AND teacher_id = ?
+                            AND attendance_time >= ?
                         """, (
-                            student_record["student_id"],
-                            student_record["student_name"],
-                            qr_info["subject"],
-                            token,
-                            datetime.now(timezone.utc).strftime(
-                                "%Y-%m-%d %H:%M:%S UTC"
-                            ),
-                            qr_info["teacher_id"]
-                        ))
+                            student_id,
+                            subject,
+                            qr["teacher_id"],
+                            datetime.now().strftime("%Y-%m-%d") + " 00:00:00"
+                        )).fetchone()
 
-                        conn.commit()
+                        if already_marked:
+                            message = "Attendance already marked for this subject today."
+                        else:
+                            conn.execute("""
+                                INSERT INTO attendance
+                                (student_id, student_name, subject,
+                                 teacher_id, attendance_time, latitude, longitude)
+                                VALUES (?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                student_record["student_id"],
+                                student_record["student_name"],
+                                subject,
+                                qr["teacher_id"],
+                                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                lat,
+                                lon
+                            ))
+                            conn.commit()
+                            message = "Attendance marked successfully!"
+                            valid = True
 
-                        message = (
-                            "Attendance marked successfully for "
-                            + student_record["student_name"] + "!"
-                        )
-
-                    except sqlite3.IntegrityError:
-                        message = (
-                            "Your attendance has already been "
-                            "marked for this QR code."
-                        )
-
-                conn.close()
+                    conn.close()
 
     return render_template(
         "student.html",
-        valid=valid,
         token=token,
         message=message,
-        subject=qr_info["subject"] if qr_info else None
+        valid=valid,
+        subject=subject
     )
 
 
-# ---------------- CSV DOWNLOAD ----------------
+# ---------------- DOWNLOAD CSV ----------------
 
 @app.route("/teacher/download")
+@login_required
 def download_attendance():
-    if not session.get("teacher_logged_in"):
-        return redirect(url_for("teacher"))
-
-    teacher_id = session["teacher_id"]
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    writer.writerow([
-        "Student ID", "Student Name",
-        "Subject", "Attendance Time"
-    ])
-
     conn = get_db()
-
     records = conn.execute("""
-        SELECT student_id, student_name, subject, recorded_at
+        SELECT student_id, student_name, subject, attendance_time
         FROM attendance
         WHERE teacher_id = ?
         ORDER BY id DESC
-    """, (teacher_id,)).fetchall()
-
+    """, (session["teacher_id"],)).fetchall()
     conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "Student ID", "Student Name", "Subject", "Attendance Time"
+    ])
 
     for record in records:
         writer.writerow([
             record["student_id"],
             record["student_name"],
             record["subject"],
-            record["recorded_at"]
+            record["attendance_time"]
         ])
 
-    return Response(
-        "\ufeff" + output.getvalue(),
-        mimetype="text/csv",
-        headers={
-            "Content-Disposition":
-                "attachment; filename=attendance_sheet.csv"
-        }
-    )
+    response = make_response(output.getvalue())
+    response.headers["Content-Disposition"] = "attachment; filename=attendance.csv"
+    response.headers["Content-Type"] = "text/csv"
+    return response
 
 
 # ---------------- LOGOUT ----------------
 
-@app.route("/teacher/logout")
+@app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("teacher"))
 
-
-# ---------------- RUN APPLICATION ----------------
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
