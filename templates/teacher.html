@@ -1,85 +1,94 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Login - SamruddhiAttendX</title>
-
+    <title>Teacher Registration</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #f4f7fb;
-            text-align: center;
-            padding: 50px 15px;
+            background: #f1f5f9;
+            padding: 20px;
         }
-
-        .box {
+        .container {
+            max-width: 420px;
+            margin: 40px auto;
             background: white;
-            max-width: 400px;
-            margin: auto;
-            padding: 30px 20px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px #00000015;
         }
-
-        input {
-            box-sizing: border-box;
+        h1 {
+            text-align: center;
+            color: #2563eb;
+        }
+        input, button {
             width: 100%;
+            box-sizing: border-box;
             padding: 12px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
+            margin-top: 14px;
             border-radius: 7px;
-        }
-
-        button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 7px;
-            cursor: pointer;
             font-size: 16px;
         }
-
-        a {
-            color: #2196F3;
-            text-decoration: none;
+        input {
+            border: 1px solid #cbd5e1;
         }
-
-        .error {
-            color: red;
+        button {
+            border: none;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
         }
+        .error { color: #dc2626; }
+        .success { color: #15803d; }
+        a { color: #2563eb; }
     </style>
 </head>
-
 <body>
-    <div class="box">
-        <h1>Teacher Login</h1>
-        <p>SamruddhiAttendX</p>
+    <div class="container">
+        <h1>SamruddhiAttendX</h1>
+        <h2>Teacher Registration</h2>
 
         {% if error %}
-            <p class="error">{{ error }}</p>
+        <p class="error">{{ error }}</p>
         {% endif %}
 
-        <form method="POST" action="/teacher">
+        {% if success %}
+        <p class="success">{{ success }}</p>
+        <a href="{{ url_for('teacher') }}">Go to Teacher Login</a>
+        {% else %}
+        <form method="POST">
+            <input
+                type="text"
+                name="teacher_name"
+                placeholder="Full Name"
+                required
+            >
+
             <input
                 type="text"
                 name="username"
-                placeholder="Teacher username"
+                placeholder="Create Username"
+                minlength="4"
                 required
             >
 
             <input
                 type="password"
                 name="password"
-                placeholder="Password"
+                placeholder="Create Password (minimum 8 characters)"
+                minlength="8"
                 required
             >
 
-            <button type="submit">Login</button>
+            <button type="submit">Create Teacher Account</button>
         </form>
 
-        <p><a href="/">← Back to Home</a></p>
+        <p>Already registered?
+            <a href="{{ url_for('teacher') }}">Login here</a>
+        </p>
+        {% endif %}
     </div>
 </body>
 </html>
