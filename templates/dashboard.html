@@ -1,167 +1,502 @@
 
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Teacher Dashboard</title>
+    <meta charset="UTF-8">
+    <title>SamruddhiAttendX | Teacher Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f2f5fa;
-            padding: 20px;
-            margin: 0;
-        }
-        .container {
-            max-width: 800px;
-            margin: auto;
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0;
+        * {
             box-sizing: border-box;
         }
+
+        body {
+            margin: 0;
+            padding: 30px 18px;
+            font-family: 'Inter', Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        /* HEADER */
+
+        .header {
+            background: linear-gradient(120deg, #102a43, #075985);
+            color: white;
+            padding: 30px;
+            border-radius: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 10px 25px rgba(15, 42, 67, 0.15);
+        }
+
+        .brand {
+            font-size: 13px;
+            letter-spacing: 2px;
+            color: #67e8f9;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin: 0 0 10px;
+        }
+
+        .header p {
+            color: #dbeafe;
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .logout {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 11px 20px;
+            border-radius: 9px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .logout:hover {
+            background: white;
+            color: #102a43;
+        }
+
+        /* SECTION CARDS */
+
+        .section {
+            background: white;
+            padding: 26px;
+            margin-top: 24px;
+            border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(15, 23, 42, 0.05);
+            border: 1px solid #e5edf5;
+        }
+
+        .section-heading {
+            margin: 0 0 8px;
+            font-size: 20px;
+            color: #102a43;
+        }
+
+        .description {
+            color: #64748b;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 22px;
+        }
+
+        .section-line {
+            height: 3px;
+            width: 45px;
+            background: #0d9488;
+            border-radius: 5px;
+            margin: 12px 0 20px;
+        }
+
+        /* FORM */
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #334155;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #dbe3ed;
+            border-radius: 10px;
+            font-size: 14px;
+            margin-bottom: 18px;
+            background: #f8fafc;
+            transition: 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #0d9488;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(13,148,136,0.10);
+        }
+
+        /* BUTTONS */
+
         button, .download {
             display: inline-block;
-            padding: 12px 18px;
-            background: #2457d6;
+            padding: 13px 20px;
+            background: linear-gradient(135deg, #102a43, #0f766e);
             color: white;
             border: none;
-            border-radius: 6px;
-            text-decoration: none;
+            border-radius: 9px;
+            font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
-            margin: 5px 0;
+            text-decoration: none;
+            transition: 0.2s;
+            margin: 5px 5px 5px 0;
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
+
+        button:hover, .download:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(15,118,110,0.2);
         }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 9px;
-            text-align: left;
+
+        .generate-btn {
+            background: linear-gradient(135deg, #0d9488, #0f766e);
         }
-        th { background: #edf1fa; }
-        .error { color: red; }
-        .qr {
+
+        /* LOCATION STATUS */
+
+        #locationStatus {
+            font-size: 13px;
+            color: #0f766e;
+            margin: 8px 0 15px;
+            font-weight: 500;
+        }
+
+        /* ERROR */
+
+        .error {
+            background: #fef2f2;
+            color: #dc2626;
+            border-left: 4px solid #dc2626;
+            padding: 13px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        /* QR CODE */
+
+        .qr-card {
+            margin-top: 25px;
+            padding: 25px;
             text-align: center;
-            margin: 20px 0;
+            background: #f0fdfa;
+            border: 1px solid #ccfbf1;
+            border-radius: 14px;
         }
+
+        .qr-card h3 {
+            color: #115e59;
+            margin-top: 0;
+        }
+
         .qr img {
             width: 220px;
             max-width: 100%;
+            padding: 12px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+        }
+
+        .expiry {
+            color: #b45309;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        /* TABLE */
+
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            min-width: 600px;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th {
+            background: #102a43;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 14px 15px;
+            border-bottom: 1px solid #e9eef5;
+            font-size: 13px;
+            color: #475569;
+        }
+
+        tr:hover td {
+            background: #f0fdfa;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 25px;
+            color: #94a3b8;
+        }
+
+        /* FOOTER */
+
+        .footer {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 12px;
+            padding: 25px 10px;
+        }
+
+        /* MOBILE DESIGN */
+
+        @media (max-width: 600px) {
+            body {
+                padding: 15px 10px;
+            }
+
+            .header {
+                padding: 22px;
+                align-items: flex-start;
+                flex-direction: column;
+            }
+
+            .header h1 {
+                font-size: 23px;
+            }
+
+            .section {
+                padding: 20px 15px;
+            }
+
+            button, .download {
+                width: 100%;
+                text-align: center;
+                margin: 6px 0;
+            }
+
+            .qr-card {
+                padding: 18px;
+            }
         }
     </style>
 </head>
+
 <body>
+
 <div class="container">
 
-    <h2>Teacher Dashboard</h2>
-    <p>Welcome, {{ teacher_name }}!</p>
+    <!-- HEADER -->
 
-    <p><a href="{{ url_for('logout') }}">Logout</a></p>
+    <div class="header">
+        <div>
+            <div class="brand">SAMRUDDHIATTENDX</div>
+            <h1>Teacher Dashboard</h1>
+            <p>Welcome back, {{ teacher_name }}! Manage your class attendance.</p>
+        </div>
+
+        <a class="logout" href="{{ url_for('logout') }}">
+            Logout
+        </a>
+    </div>
 
     {% if error %}
         <p class="error">{{ error }}</p>
     {% endif %}
 
-    <hr>
+    <!-- QR GENERATION SECTION -->
 
-    <h3>Generate Daily QR Code</h3>
+    <div class="section">
 
-    <form method="POST" action="{{ url_for('dashboard') }}">
-        <input
-            type="text"
-            name="subject"
-            placeholder="Enter Subject Name"
-            required
-        >
+        <h2 class="section-heading">Generate Daily QR Code</h2>
+        <div class="section-line"></div>
 
-        <input type="hidden" name="teacher_latitude" id="teacher_latitude">
-        <input type="hidden" name="teacher_longitude" id="teacher_longitude">
+        <p class="description">
+            Enter your subject, capture your current location
+            and generate a QR code for student attendance.
+        </p>
 
-        <button type="button" onclick="getTeacherLocation()">
-            Capture Teacher Location
-        </button>
+        <form method="POST" action="{{ url_for('dashboard') }}">
 
-        <p id="locationStatus"></p>
+            <label>Subject Name</label>
 
-        <button type="submit">Generate QR Code</button>
-    </form>
+            <input
+                type="text"
+                name="subject"
+                placeholder="Example: Python Programming"
+                required
+            >
 
-    {% if qr_data %}
-        <div class="qr">
-            <h3>Scan this QR Code</h3>
-            <img src="{{ qr_data }}" alt="Attendance QR Code">
-            <p>QR code expires after 5 minutes.</p>
+            <input
+                type="hidden"
+                name="teacher_latitude"
+                id="teacher_latitude"
+            >
+
+            <input
+                type="hidden"
+                name="teacher_longitude"
+                id="teacher_longitude"
+            >
+
+            <button type="button" onclick="getTeacherLocation()">
+                Capture Teacher Location
+            </button>
+
+            <p id="locationStatus">
+                Location not captured yet.
+            </p>
+
+            <button type="submit" class="generate-btn">
+                Generate QR Code
+            </button>
+
+        </form>
+
+        {% if qr_data %}
+        <div class="qr-card">
+
+            <h3>Your Attendance QR Code</h3>
+
+            <p class="description">
+                Ask students to scan this QR code to mark attendance.
+            </p>
+
+            <div class="qr">
+                <img src="{{ qr_data }}" alt="Attendance QR Code">
+            </div>
+
+            <p class="expiry">
+                QR code expires after 5 minutes.
+            </p>
+
         </div>
-    {% endif %}
+        {% endif %}
 
-    <hr>
+    </div>
 
-    <h3>Attendance Records</h3>
+    <!-- ATTENDANCE RECORDS -->
 
-    <a class="download" href="{{ url_for('download_attendance') }}">
-        Download Attendance CSV
-    </a>
+    <div class="section">
 
-    <table>
-        <tr>
-            <th>Student ID</th>
-            <th>Student Name</th>
-            <th>Subject</th>
-            <th>Date and Time</th>
-        </tr>
+        <h2 class="section-heading">Attendance Records</h2>
+        <div class="section-line"></div>
 
-        {% for record in records %}
-        <tr>
-            <td>{{ record.student_id }}</td>
-            <td>{{ record.student_name }}</td>
-            <td>{{ record.subject }}</td>
-            <td>{{ record.attendance_time }}</td>
-        </tr>
-        {% else %}
-        <tr>
-            <td colspan="4">No attendance records yet.</td>
-        </tr>
-        {% endfor %}
-    </table>
+        <p class="description">
+            View your recorded student attendance and download the report.
+        </p>
+
+        <a class="download" href="{{ url_for('download_attendance') }}">
+            Download Attendance CSV
+        </a>
+
+        <div class="table-wrapper">
+
+            <table>
+
+                <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Student Name</th>
+                        <th>Subject</th>
+                        <th>Date and Time</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for record in records %}
+                    <tr>
+                        <td>{{ record.student_id }}</td>
+                        <td>{{ record.student_name }}</td>
+                        <td>{{ record.subject }}</td>
+                        <td>{{ record.attendance_time }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="empty">
+                            No attendance records yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="footer">
+        SamruddhiAttendX | Smart QR-Based Attendance System
+        <br>
+        © 2026 All Rights Reserved
+    </div>
 
 </div>
 
 <script>
 function getTeacherLocation() {
+
     const status = document.getElementById("locationStatus");
 
     if (!navigator.geolocation) {
-        status.textContent = "Location is not supported by this browser.";
+        status.textContent =
+            "Location is not supported by this browser.";
         return;
     }
 
     status.textContent = "Getting teacher location...";
 
     navigator.geolocation.getCurrentPosition(
+
         function(position) {
+
             document.getElementById("teacher_latitude").value =
                 position.coords.latitude;
 
             document.getElementById("teacher_longitude").value =
                 position.coords.longitude;
 
-            status.textContent = "Teacher location captured successfully.";
+            status.textContent =
+                "Teacher location captured successfully.";
+
         },
+
         function(error) {
-            status.textContent = "Location access failed. Please allow location permission.";
+
+            status.textContent =
+                "Location access failed. Please allow location permission.";
+
         },
+
         {
             enableHighAccuracy: true,
             timeout: 15000,
             maximumAge: 0
         }
+
     );
 }
 </script>
