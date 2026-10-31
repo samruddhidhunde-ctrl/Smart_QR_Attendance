@@ -2,67 +2,200 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SamruddhiAttendX</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f0f5fc;
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-sizing: border-box;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SamruddhiAttendX</title>
 
-        .card {
-            background: white;
-            width: 100%;
-            max-width: 500px;
-            padding: 35px;
-            border-radius: 18px;
-            text-align: center;
-            box-shadow: 0 8px 25px #00000015;
-            box-sizing: border-box;
-        }
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-        h1 {
-            color: #1677d2;
-            font-size: 30px;
-        }
+body {
+    min-height: 100vh;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background:
+        radial-gradient(circle at 15% 20%, #164e63 0%, transparent 35%),
+        radial-gradient(circle at 85% 80%, #134e4a 0%, transparent 35%),
+        linear-gradient(135deg, #071426, #102a43, #0b2535);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 25px;
+    color: white;
+}
 
-        p {
-            color: #555;
-            line-height: 1.6;
-        }
+.container {
+    width: 100%;
+    max-width: 530px;
+    text-align: center;
+}
 
-        a {
-            display: block;
-            background: #168cf0;
-            color: white;
-            padding: 14px;
-            margin-top: 15px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: bold;
-        }
+.logo {
+    width: 75px;
+    height: 75px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #2dd4bf, #0891b2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 22px;
+    font-size: 34px;
+    font-weight: bold;
+    color: #082f49;
+    box-shadow: 0 8px 30px #2dd4bf45;
+}
 
-        a.secondary {
-            background: #176b45;
-        }
-    </style>
+.card {
+    background: rgba(255,255,255,0.09);
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    padding: 45px 38px;
+    border-radius: 25px;
+    box-shadow: 0 25px 70px rgba(0,0,0,0.30);
+}
+
+h1 {
+    font-size: 32px;
+    font-weight: 750;
+    margin-bottom: 12px;
+    letter-spacing: -0.7px;
+}
+
+h1 span {
+    color: #2dd4bf;
+}
+
+.tagline {
+    color: #a5f3fc;
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+}
+
+.description {
+    color: #d1dce8;
+    line-height: 1.8;
+    font-size: 15px;
+    margin-bottom: 30px;
+}
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 700;
+    transition: 0.25s ease;
+}
+
+.student {
+    color: #082f49;
+    background: linear-gradient(135deg, #5eead4, #22d3ee);
+    box-shadow: 0 8px 22px #22d3ee30;
+}
+
+.teacher {
+    color: white;
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.30);
+}
+
+.btn:hover {
+    transform: translateY(-3px);
+    filter: brightness(1.08);
+}
+
+.features {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 28px;
+    color: #cbd5e1;
+    font-size: 12px;
+}
+
+.features span {
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 20px;
+}
+
+.footer {
+    margin-top: 25px;
+    color: #94a3b8;
+    font-size: 12px;
+}
+
+@media(max-width: 480px) {
+    .card {
+        padding: 35px 22px;
+    }
+
+    h1 {
+        font-size: 26px;
+    }
+}
+</style>
 </head>
-<body>
-    <div class="card">
-        <h1>SamruddhiAttendX</h1>
-        <p>Smart QR-Based Attendance System</p>
-        <p>Register students, generate QR codes, and record attendance.</p>
 
-        <a href="{{ url_for('register') }}">Student Registration</a>
-        <a href="{{ url_for('teacher') }}" class="secondary">Teacher Login</a>
+<body>
+
+<div class="container">
+
+    <div class="logo">S</div>
+
+    <div class="card">
+
+        <p class="tagline">Smart Campus Technology</p>
+
+        <h1>Samruddhi<span>AttendX</span></h1>
+
+        <p class="description">
+            Smart QR-Based Attendance System
+            <br><br>
+            Simplifying classroom attendance with
+            QR code generation and location verification.
+        </p>
+
+        <div class="actions">
+
+            <a href="/register" class="btn student">
+                Student Registration →
+            </a>
+
+            <a href="/teacher" class="btn teacher">
+                Teacher Login →
+            </a>
+
+        </div>
+
+        <div class="features">
+            <span>✓ Smart QR</span>
+            <span>✓ Location Verification</span>
+            <span>✓ Digital Attendance</span>
+        </div>
+
     </div>
+
+    <div class="footer">
+        © 2026 SamruddhiAttendX | Smart Attendance Management
+    </div>
+
+</div>
+
 </body>
 </html>
